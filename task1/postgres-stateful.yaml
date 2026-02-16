@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Secret
+metadata:
+ name: postgres-secret
+ namespace: database
+type: Opaque
+stringData:
+ POSTGRES_USER: appuser
+ POSTGRES_PASSWORD: apppassword
+ POSTGRES_DB: appdb
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+ name: postgres-pvc
+ namespace: database
+spec:
+ storageClassName: standard
+ accessModes:
+  - ReadWriteOnce
+ resources:
+  requests:
+   storage: 1Gi
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+ name: postgres
+ namespace: database
+spec:
+ serviceName: postgres-headless
+ replicas: 1
+ selector:
+  matchLabels:
+   app: postgres
+ template:
+  metadata:
+   labels:
+    app: postgres
+  spec:
+   containers:
+   - name: postgres
+     image: postgres:15
+     ports:
+     - containerPort: 5432
+       name: postgres
+     envFrom:
+     - secretRef:
+        name: postgres-secret
+     env:
+     - name: PGDATA
+       value: /var/lib/postgresql/data/pgdata
+     volumeMounts:
+     - name: postgres-storage
+       mountPath: /var/lib/postgresql/data
+     livenessProbe:
+      exec:
+       command:
+       - pg_isready
+       - -U
+       - appuser
+       - -d
+       - appdb
+      initialDelaySeconds: 30
+      periodSeconds: 10
+     readinessProbe:
+      exec:
+       command:
+       - pg_isready
+       - -U
+       - appuser
+       - -d
+       - appuser
+      initialDelaySeconds: 5
+      periodSeconds: 5
+   volumes:
+   - name: postgres-storage
+     persistentVolumeClaim:
+      claimName: postgres-pvc
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: postgres-service
+ namespace: database
+spec:
+ selector:
+  app: postgres
+ ports:
+ - port: 5432
+   targetPort: 5432
+ type: ClusterIP
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: postgres-headless
+ namespace: database
+spec:
+ selector:
+  app: postgres
+ clusterIP: None
+ ports:
+ - port: 5432
+   targetPort: 5432

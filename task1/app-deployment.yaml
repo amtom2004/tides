@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webapp-config
+  namespace: webapp
+data:
+  DB_HOST: postgres-service.database.svc.cluster.local
+  DB_PORT: "5432"
+  DB_NAME: appdb
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webapp-secret
+  namespace: webapp
+type: Opaque
+stringData:
+  DB_USER: appuser
+  DB_PASSWORD: apppassword
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+  namespace: webapp
+  labels:
+    app: webapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+      - name: webapp
+        image: monitor:1.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - configMapRef:
+            name: webapp-config
+        - secretRef:
+            name: webapp-secret
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health/ready
+            port: 5000
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          failureThreshold: 30
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+  namespace: webapp
+spec:
+  type: NodePort
+  selector:
+    app: webapp
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30080

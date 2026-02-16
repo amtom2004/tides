@@ -1,0 +1,3 @@
+[submodule "task2/monitor"]
+	path = task2/monitor
+	url = https:github.com/amtom2004/monitor.git
