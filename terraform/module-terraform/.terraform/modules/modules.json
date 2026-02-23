@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"dev_cluster","Source":"./modules/kind-cluster","Dir":"modules/kind-cluster"},{"Key":"prod_cluster","Source":"./modules/kind-cluster","Dir":"modules/kind-cluster"},{"Key":"staging_cluster","Source":"./modules/kind-cluster","Dir":"modules/kind-cluster"}]}
